@@ -1,6 +1,6 @@
-# Projeto Pdi
+# Projeto PDI
 
 ## Projeto criado usando github e Github desktop
 
-Criando page
+O projeto consiste na criação de uma página, na qual estará disponível as atividades solicitadas pela disciplina de Processamento digital de imagens.  
 
