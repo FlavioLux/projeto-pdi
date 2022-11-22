@@ -11,16 +11,80 @@
     <h1><font face="montserrat"> Atividades</font></h1>
     <font face="Montserrat"> Discente : Flávio henrique Lopes Barbosa - flavio.lopes.039@ufrn.br </font>
     <p> </p>
-    <h1>Processamento Digital de Imagens</h1>
+    <h2>Processamento Digital de Imagens</h2>
     <p>     Essa página se destina a exibição de atividades propostas na disciplina de Processamento Digital de Imagens. A linguagem escolhida para implemnetação foi C++. Os códigos foram feitos no editor de texto padrão do Ubuntu, sendo compilados e executados via terminal com as flags específicas fornecidas no arquivo Make.</p>
 
     
-    <h1>Atividade 1</h1>
+    <h3>Atividade 1</h3>
     <b> 1. Manipulação de Pixels</b>
-    <p> </p>
-    <p> Tal atividade refere-se a inversão dos tons de cinza, obtendo assim um negativo de uma região escolhida a partir da interação, o qual fornecerá as coordenadas que compreendem o espaço que será aplicado o negativo.</p>
+    <div>
+    <p>     Tal atividade refere-se a inversão dos tons de cinza, obtendo assim um negativo de uma região escolhida a partir da interação, o qual fornecerá as coordenadas que compreendem o espaço que será aplicado o negativo.</p>
     <p>     O código utilizado na prática se encontra abaixo:</p>
+    <code> #include <iostream>
+        #include <opencv4/opencv2/opencv.hpp>
+        
+        using namespace cv;
+        using namespace std;
+        
+        int main(int, char**){
+          Mat image;
+          Vec3b val;
+        
+          image= imread("capa.png",CV_IMREAD_GRAYSCALE);
+          if(!image.data)
+          cout << "nao abriu capa.png" <<endl;
+        
+          namedWindow("janela",CV_WINDOW_AUTOSIZE);
+          
+            int x1, y1, x2, y2;
+        
+            cout << "O tamanho da imagem é: " << image.size().height << "/"<< image.size().width << " Escreva pontos dentro desse limite."<< endl;
+        
+            do{
+                cout << "digite o primeiro ponto (x):" << endl;
+                cin >> x1;
+                if(x1 >= image.rows || x1 < 0)
+                    cout << "Número Inválido :). Insira Novamente." << endl;
+            }
+            while(x1 >=image.rows);
+        
+            do{
+                cout << "digite o primeiro ponto (y):" << endl;
+                cin >> y1;
+                if(y1 >= image.cols || y1 < 0)
+                    cout << "Número Inválido :). Insira Novamente." << endl;
+            }
+            while(y1 >=image.cols);
+        
+            do{
+                cout << "digite o segundo ponto (x):" << endl;
+                cin >> x2;
+                if(x2 >= image.rows || x2 < 0)
+                    cout << "Número Inválido :). Insira Novamente." << endl;
+            }
+            while(x2 >=image.rows);
+        
+            do{
+                cout << "digite o segundo ponto (y):" << endl;
+                cin >> y2;
+                if(y2 >= image.cols || y2 < 0)
+                    cout << "Número Inválido :). Insira Novamente." << endl;
+            }
+            while(y2 >=image.cols);
+                for(int i=x1; i<x2; i++){
+                    for(int j=y1; j<y2; j++){
+                        image.at<uchar>(i,j)=255-image.at<uchar>(i,j); 
+                }
+        
+          }
+          
+          imwrite("apply.png",image);
+          imshow("janela", image);
+          waitKey();
+          return 0;
+        }
+        </code>
     
-    
+    </div>
 </body>
 </html>
