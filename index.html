@@ -130,7 +130,215 @@
     <p> </p>
     <p> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Nesta atividade utilizaremos um filtro baseado na Transformada de Fourrier, oqual explora a manipulação de propriedades das imagens a partir do domínio da frequência, que tem como objetivo a remoção de ruídos e distorções , geralmente de natureza periódica.</p>
     <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Algumas funções do Opencv no código usado como referência estavam desatualizadas para versão utilizada ( Opencv 4.2.0 )  de forma a ficarem indefinidas na compilação, tais como  'CV_MINMAX', modificada para 'cv :: NORM_MINMAX' e 'CV_BGR2GRAY', modificada para 'cv :: COLOR_BGR2GRAY'.</p>
-    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A seguir o código utilizado para a implementação do filtro :</p>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A seguir o código utilizado para a implementação do filtro :</p> 
+    <p> </p>
+    <pre><code class="c++" contentEditable="true">
+            #include <iostream>
+            #include <opencv2/opencv.hpp>
+            #include <math.h>
+            #include <vector>
+            
+            using namespace cv;
+            using namespace std;
+            
+            int height;
+            
+            int dft_M, dft_N;
+            
+            float MAX = 100.0;
+            float gl = 0;
+            float max_gl = 100;
+            int gl_slider = 0;
+            
+            int d0_slider = 0;
+            float max_d0 = 256;
+            float d0 = 0;
+            
+            float gh = 0;
+            float max_gh = 100;
+            int gh_slider = 0;
+            
+            float c = 0;
+            float max_c = 100;
+            int c_slider = 0;
+            
+            
+            Mat image, imageDft, padded;
+            
+            char TrackbarName[50];
+            
+            // troca os quadrantes da imagem da DFT
+            void deslocaDFT(Mat& image )
+            {
+                Mat aux, A, B, C, D;
+            
+                // se for impar recorta para nao ter imagens desiguais
+                image = image(Rect(0, 0, image.cols & -2, image.rows & -2));
+                int cx = image.cols/2;
+                int cy = image.rows/2;
+            
+                // reorganiza os quadrantes
+                A = image(Rect(0, 0, cx, cy));
+                B = image(Rect(cx, 0, cx, cy));
+                C = image(Rect(0, cy, cx, cy));
+                D = image(Rect(cx, cy, cx, cy));
+            
+                // A <-> D
+                A.copyTo(aux);  D.copyTo(A);  aux.copyTo(D);
+            
+                // C <-> B
+                C.copyTo(aux);  B.copyTo(C);  aux.copyTo(B);
+            }
+            
+            void calcFiltroHomomorfico()
+            {
+                Mat filter = Mat(padded.size(), CV_32FC2, Scalar(0));
+                Mat aux = Mat(dft_M, dft_N, CV_32F);
+            
+                for (int i = 0; i < dft_M; i++)
+                {
+                    for (int j = 0; j < dft_N; j++)
+                    {
+                        float d2 = pow(i - dft_M/2.0, 2) + pow(j - dft_N/2.0, 2);
+                        float exp = -c * (d2/pow(d0, 2));
+                        float valor = (gh - gl)*(1 - expf(exp) ) + gl;
+                        aux.at<float> (i,j) = valor;
+                    }
+                }
+            
+                Mat comps[] = {aux, aux};
+                merge(comps, 2, filter);
+            
+                Mat dftClone = imageDft.clone();
+            
+                mulSpectrums(dftClone,filter,dftClone,0);
+            
+                deslocaDFT(dftClone);
+            
+                idft(dftClone, dftClone);
+            
+                vector<Mat> planos;
+            
+                split (dftClone, planos);
+            
+                normalize(planos[0], planos[0], 0, 1, cv::NORM_MINMAX);
+            
+                char bufferd0[20], bufferyh[20], bufferyl[20];
+                sprintf(bufferd0, "D0: %f", d0);
+                sprintf(bufferyh, "GH: %f", gh);
+                sprintf(bufferyl, "GL: %f", gl);
+                sprintf(bufferyl, "c: %f", c);
+                putText(planos[0], bufferd0,cv::Point(0,10), cv::FONT_HERSHEY_SIMPLEX, 0.35, cv::Scalar(255),1,8,false);
+                putText(planos[0], bufferyh,cv::Point(0,20), cv::FONT_HERSHEY_SIMPLEX, 0.35, cv::Scalar(255),1,8,false);
+                putText(planos[0], bufferyl,cv::Point(0,30), cv::FONT_HERSHEY_SIMPLEX, 0.35, cv::Scalar(255),1,8,false);
+                putText(planos[0], bufferyl,cv::Point(0,40), cv::FONT_HERSHEY_SIMPLEX, 0.35, cv::Scalar(255),1,8,false);
+                imshow("Filtro Homomorfico", planos[0]);
+            
+                imshow("Original", image);
+                imwrite("ResultadoHomomorfico.png", planos[0]);
+            }
+            
+            void on_trackbar_gl(int, void*)
+            {
+                gl = (float) gl_slider;
+                gl = max_gl*gl/MAX;
+                calcFiltroHomomorfico();
+            }
+            
+             // Declaração de parâmetros ajustáveis
+            void on_trackbar_d0(int, void *)
+            {
+                d0 = d0_slider*max_d0/MAX;
+                calcFiltroHomomorfico();
+            }
+            
+            void on_trackbar_gh(int, void*)
+            {
+                gh = gh_slider*max_gh/MAX;
+                calcFiltroHomomorfico();
+            }
+            void on_trackbar_c(int, void*)
+            {
+              c = c_slider*max_c/MAX;
+              calcFiltroHomomorfico();
+            }
+            
+            int main(int argvc, char** argv)
+            {
+                //Imagem que deseja Filtrar
+                image = imread("boris1.png");
+                cvtColor(image, image, cv::COLOR_BGR2GRAY);
+            
+                height = image.size().height;
+            
+                // identifica os tamanhos otimos para o calculo do FFT
+                dft_M = getOptimalDFTSize(image.rows);
+                dft_N = getOptimalDFTSize(image.cols);
+            
+                // realiza o padding da imagem
+                Mat_<float> zeros;
+                copyMakeBorder(image, padded, 0,
+                               dft_M - image.rows, 0,
+                               dft_N - image.cols,
+                               BORDER_CONSTANT, Scalar::all(0));
+            
+                // parte imaginaria da matriz complexa (preenchida com zeros)
+                zeros = Mat_<float>::zeros(padded.size());
+            
+                // prepara a matriz complexa para ser preenchida
+                imageDft = Mat(padded.size(), CV_32FC2, Scalar(0));
+            
+                copyMakeBorder(image, padded, 0,
+                               dft_M - image.rows, 0,
+                               dft_N - image.cols,
+                               BORDER_CONSTANT, Scalar::all(0));
+            
+                Mat_<float> realInput = Mat_<float>(padded);
+            
+                vector<Mat> planos;
+                planos.push_back(realInput);
+                planos.push_back(zeros);
+            
+                merge(planos, imageDft);
+            
+                dft(imageDft, imageDft);
+                deslocaDFT(imageDft);
+            
+                namedWindow("Filtro Homomorfico", 1);
+            
+                sprintf( TrackbarName, "gH");
+                createTrackbar( TrackbarName, "Filtro Homomorfico",
+                                &gh_slider,
+                                MAX,
+                                on_trackbar_gh);
+            
+                sprintf( TrackbarName, "gL");
+                createTrackbar( TrackbarName, "Filtro Homomorfico",
+                                &gl_slider,
+                                MAX,
+                                on_trackbar_gl);
+            
+                sprintf( TrackbarName, "D0");
+                createTrackbar( TrackbarName, "Filtro Homomorfico",
+                                &d0_slider,
+                                MAX,
+                                on_trackbar_d0 );
+                sprintf( TrackbarName, "c");
+                createTrackbar( TrackbarName, "Filtro Homomorfico",
+                                &c_slider,
+                                MAX,
+                                on_trackbar_c);
+            
+                calcFiltroHomomorfico();
+                waitKey(0);
+            
+            
+                return 0;
+            }
+
+        </code></pre>
+        </div> 
+        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A imagem utilizada na prática foi uma gravura do encarte de um álbum do fim dos anos 90, o "Mellow Collie and infinite sadness", da banda The Smashing Pumpkins. Apresentado abaixo:</p>
 
 </body>
 </html>
