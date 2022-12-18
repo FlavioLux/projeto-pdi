@@ -358,9 +358,158 @@
         </center>
         <p> </p>
         <p> </p>
-        <b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Canny e Pontilhismo</b>
+        <b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Canny e a Arte do Pontilhismo</b>
         <p> </p>
         <p> </p>
+        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;O objetivo desta atividade é realizar um programa que una o pontilhismo, uma técnica de pintura que surgiu no século XIX, com o Algoritmo de detecção de bordas Canny. Assim, obtêm-se uma imagem em pontilhismo criada computacionalmente com opção de realizar variações de raio de cada ponto.Para prática foi utilizada a mesma imagem da atividade anterior.</p> 
+        <p></p>
+        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Segue o código utilizado :</p>
+        <p></p>
+        <p> </p>
+        <pre><code class="c++" contentEditable="true">
+            #include <iostream>
+                #include <opencv2/opencv.hpp>
+                #include <fstream>
+                #include <iomanip>
+                #include <vector>
+                #include <algorithm>
+                #include <numeric>
+                #include <ctime>
+                #include <cstdlib>
+                
+                using namespace std;
+                using namespace cv;
+                // O step define o passo usado para varrer a imagem de referência
+                int step_slider = 5;
+                int step_slider_max = 20;
+                int jitter_slider = 3;
+                int jitter_slider_max = 10;
+                int raio_slider = 3;
+                int raio_slider_max = 10;
+                
+                int top_slider = 70;
+                int top_slider_max = 200;
+                
+                char TrackbarName[50];
+                
+                Mat imagem, borda, pontos;
+                
+                //arrays de índices que servirão para identificar elementos da imagem de referência
+                vector<int> yrange;
+                vector<int> xrange;
+                
+                int width, height, r,g,b;
+                int x, y;
+                
+                void on_trackbar_canny(int, void*)
+                {
+                  Canny(imagem, borda, top_slider, 3*top_slider);
+                
+                //É feito o preenchimento de xrange e yrange com valores sequenciais iniciando em 0.
+                //Em seguida, esses valores recebem um ganho igual a step e um deslocamento step/2.
+                
+                  xrange.resize(height/step_slider);
+                  yrange.resize(width/step_slider);
+                
+                  iota(xrange.begin(), xrange.end(), 0);
+                  iota(yrange.begin(), yrange.end(), 0);
+                
+                  for(uint i=0; i<xrange.size(); i++)
+                  {
+                    xrange[i]= xrange[i]*step_slider+step_slider/2;
+                  }
+                
+                  for(uint i=0; i<yrange.size(); i++)
+                  {
+                    yrange[i]= yrange[i]*step_slider+step_slider/2;
+                  }
+                
+                  pontos = Mat(height, width, CV_8UC3, CV_RGB(255,255,255));
+                
+                  //Embaralhamento aleatoriamente
+                  random_shuffle(xrange.begin(), xrange.end());
+                
+                  // i e j assumem a cada passada no loop, os valores dos arrays xrange e yrange de forma consecutiva.
+                
+                  for(auto i : xrange)
+                  {
+                    random_shuffle(yrange.begin(), yrange.end());
+                    for(auto j : yrange)
+                    {
+                      if(jitter_slider) x = i+rand()%(2*jitter_slider)-jitter_slider+1;
+                      else x = i;
+                      if(jitter_slider) y = j+rand()%(2*jitter_slider)-jitter_slider+1;
+                      else y = j;
+                      b = imagem.at<Vec3b>(x,y)[0];
+                      g = imagem.at<Vec3b>(x,y)[1];
+                      r = imagem.at<Vec3b>(x,y)[2];
+                
+                    //É traçado um circulo de raio especificado em um ponto determinado pelo usuario
+                      circle(pontos,cv::Point(y,x),raio_slider,CV_RGB(r,g,b),-1,cv::LINE_AA);
+                    }
+                  }
+                
+                  for(int i = 0;i<height;i++)
+                  {
+                    for(int j = 0;j<width;j++)
+                    {
+                      int borda_radius = borda.at<uchar>(i,j)*(top_slider/40 + 1)/255;
+                      b = imagem.at<Vec3b>(i,j)[0];
+                      g = imagem.at<Vec3b>(i,j)[1];
+                      r = imagem.at<Vec3b>(i,j)[2];
+                      circle(pontos,cv::Point(j,i),borda_radius,CV_RGB(r,g,b),-1,cv::LINE_AA);
+                    }
+                  }
+                  imshow("cannypoints",pontos);
+                }
+                
+                int main(int argc, char** argv)
+                {
+                
+                  imagem= imread(argv[1],IMREAD_COLOR);
+                
+                  if(!imagem.data)
+                  {
+                    cout << "nao abriu" << argv[1] << endl;
+                    cout << argv[0] << " imagem.jpg";
+                    exit(0);
+                  }
+                
+                  namedWindow("cannypoints",WINDOW_NORMAL);
+                  imshow("cannypoints",imagem);
+                
+                  srand(time(0));
+                
+                  width=imagem.size().width;
+                  height=imagem.size().height;
+                
+                  sprintf( TrackbarName, "Threshold inferior x %d", top_slider_max );
+                  createTrackbar( TrackbarName, "cannypoints", &top_slider, top_slider_max, on_trackbar_canny );
+                
+                  sprintf( TrackbarName, "step x %d",  step_slider_max );
+                  createTrackbar( TrackbarName, "cannypoints", &step_slider, step_slider_max, on_trackbar_canny );
+                
+                  sprintf( TrackbarName, "Jitter x %d", jitter_slider_max );
+                  createTrackbar( TrackbarName, "cannypoints", &jitter_slider, jitter_slider_max, on_trackbar_canny );
+                
+                  sprintf( TrackbarName, "Raio x %d", top_slider_max );
+                  createTrackbar( TrackbarName, "cannypoints", &raio_slider, raio_slider_max, on_trackbar_canny );
+                
+                  waitKey();
+                  return 0;
+                }
+
+
+                  </code></pre>
+                   </div>  
+                    <p></p>
+                   <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Abaixo o resultado, que poderia ser ajustado de acordo com os parâmetros, pelo usuário:</p>
+                   <p></p>
+
+
+
+
+        
 
 
 
